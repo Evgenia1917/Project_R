@@ -1,0 +1,188 @@
+---
+title: "Project R"
+author: "Evgeniia"
+date: "26 03 2021"
+output: html_document
+---
+
+## Dataset
+```{r dataset, echo = FALSE, message = FALSE, warning = FALSE}
+library(ggplot2)
+
+
+
+library(tidyverse)
+review <- readr::read_csv('reviews_1.csv')
+#summary(review)
+review1 <- review %>%
+  select(!X1)%>%
+  rename(Stars = stars,Feedback = feedback, Gender = gender, Words = num_words,Name = name)
+knitr::kable(review1[1:10, 1:5])
+```
+#### **Summary**
+```{r dataset_summary, echo = FALSE, message = FALSE, warning = FALSE}
+knitr::kable(summary(review1))
+```
+#### **Visualization**
+```{r dataset_vis, echo = FALSE, message = FALSE, warning = FALSE}
+
+vis <- review1 %>%
+  ggplot(aes(x = Stars, y = Words)) +
+  geom_jitter(aes(colour = Gender), alpha = 0.5,) +
+  geom_hline(yintercept = mean(review1$Words, na.rm=T), col="black", linetype="dotted")+
+  annotate("text", x = 2, y = mean(review1$Words, na.rm=T)-2, label="Average feedback length", col="black", size=3)+
+  labs(x = "Stars", y = "Length of feedback (words)")+
+  scale_x_continuous(breaks = c(1,2,3,4,5))+
+  theme_gray() +
+  theme(panel.background = element_rect(fill = "#dde6f0",
+                                colour = "#dde6f0",))
+  
+  
+vis
+
+```
+
+## Data analysis by gender
+
+
+#### **Summary**
+```{r summary1, echo = FALSE, message = FALSE, warning = FALSE}
+#install.packages("psych")
+library("psych")
+library("dplyr")
+summary <- review1 %>%
+  group_by(Gender) %>%
+  summarise(describe(Words))
+knitr::kable(summary)
+
+
+```
+
+
+
+#### **Two Sample T-test**
+```{r T-test, echo = FALSE, message = FALSE, warning = FALSE}
+#review1 %>% 
+  #filter(Gender == "M")
+review2 <- review1 %>%
+  slice_head(n = 530)
+#review2
+reviewFM <- review2 %>%
+  filter(Gender %in% c("F","M"))
+t.test(Words ~ Gender, data = reviewFM, paired = FALSE)
+
+```
+
+
+
+
+
+
+#### **Feedback length distribution by gender**
+
+```{r Boxes, echo = FALSE, message = FALSE, warning = FALSE}
+library(plotly)
+fig <- plot_ly(review1, y = ~Words, color = ~Gender, type = "box")
+fig <- fig %>% layout(paper_bgcolor = "white", plot_bgcolor = "dde6f0")
+fig <- fig %>% layout(yaxis = list(title = 'Length of feedback (words)'), 
+                      xaxis = list(title = 'Gender'))
+
+fig
+```
+
+
+
+
+
+
+
+## Data analysis by stars
+#### **Summary**
+```{r summary2, echo = FALSE, message = FALSE, warning = FALSE}
+summary1 <- review1 %>%
+  group_by(Stars) %>%
+  summarise(describe(Words))
+knitr::kable(summary1)
+
+
+```
+
+#### **Feedback length distribution by stars**
+```{r visual2, echo = FALSE, message = FALSE, warning = FALSE}
+
+ggplot(data = review1) +
+  (aes(color = Stars, fill = Stars, x = Stars, y = Words)) +
+  geom_boxplot(alpha = 0.5, width = 40) +
+  geom_jitter(alpha = 0.3, width=10, height=0) +
+  #geom_hline(yintercept = mean(review1$Words, na.rm=T), col="white", linetype="dotted")+
+  #annotate("text", x = 2, y = mean(review1$Words, na.rm=T)-2, label="Average feedback length", col="white", size=2)+
+  scale_x_continuous(breaks = (NULL)) +
+  coord_fixed() +
+  facet_wrap(~Stars)+
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = "#dde6f0",
+                                        colour = "#dde6f0"))
+
+```
+
+
+#### **Analysis of variance ANOVA**
+
+```{r Test, echo = FALSE, message = FALSE, warning = FALSE}
+review_test <- review1 %>%
+  mutate(Starsf = factor(Stars))
+aov_model<- aov(Words ~ Starsf, review_test)
+aov_model
+summary(aov_model)
+```
+
+#### **Tukey HSD post hoc test**
+
+
+```{r POst-hoc, echo = FALSE, message = FALSE, warning = FALSE}
+TukeyHSD(aov_model)
+ 
+
+```
+
+
+#### **Mean feedback length by the number of stars**
+
+```{r vis3, echo = FALSE, message = FALSE, warning = FALSE}
+
+review1$Stars <- as.vector(review1$Stars)
+review1$Words <- as.vector(review1$Words)
+
+
+d <- aggregate(review1$Words, review1["Stars"], 
+               mean, na.rm = T)
+
+ggplot(d, aes(x=Stars, y = x))+
+  geom_col(position = "dodge", alpha = 0.5, fill = "#0e3673")+
+  scale_y_continuous(name = "Mean feedback length (woeds)") +
+  theme(panel.background = element_rect(fill = "#dde6f0",
+                                colour = "#dde6f0",))
+
+```
+
+#### **General visualization of feedback length depending on the gender and the number of stars**
+
+```{r vis5, echo = FALSE, message = FALSE, warning = FALSE}
+
+ggplot(data = review1) +
+  (aes(x = Stars, y = Words, fill = Gender)) +
+  geom_boxplot(aes(color = Gender), alpha = 0.6,width = 40) +
+  geom_hline(yintercept = mean(review1$Words, na.rm=T), col="black", linetype="dotted")+
+  annotate("text", x = 2, y = mean(review1$Words, na.rm=T)-2, label="Mean feedback length", col="black", size=2)+
+  scale_x_continuous(breaks = (NULL)) +
+  scale_y_continuous(name = "Feedback length (words)") +
+  coord_fixed() +
+  facet_wrap(~Stars)+
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = "#dde6f0",
+                                        colour = "#dde6f0",))
+
+
+
+```
+
